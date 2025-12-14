@@ -13,7 +13,8 @@ const renameFiles = {
 };
 
 async function init() {
-    console.log(bold(green('\nWelcome to VectraDocs Backend Setup!\n')));
+    console.log(bold(green('\n🚀 Welcome to VectraDocs Backend Setup!\n')));
+    console.log('This tool will scaffold a production-ready AI backend for your docs.\n');
 
     let result;
     try {
@@ -22,10 +23,18 @@ async function init() {
                 {
                     type: 'select',
                     name: 'backend',
-                    message: 'Which backend do you want to create?',
+                    message: 'Select your backend infrastructure:',
                     choices: [
-                        { title: 'Cloudflare Workers (AI)', value: 'chat-workers' },
-                        { title: 'Node.js (Express)', value: 'chat-backend' },
+                        {
+                            title: 'Cloudflare Workers (Recommended)',
+                            description: 'Serverless, runs at the Edge, uses Helpers AI.',
+                            value: 'chat-workers'
+                        },
+                        {
+                            title: 'Node.js (Express)',
+                            description: 'Standard server. Runs on Vercel/VPS. Uses OpenAI SDK.',
+                            value: 'chat-backend'
+                        },
                     ],
                 },
                 {
@@ -65,10 +74,21 @@ async function init() {
     fs.mkdirSync(root, { recursive: true });
     copy(templateDir, root);
 
-    console.log(green(`\nDone. Now run:\n`));
-    console.log(`  cd ${projectName}`);
-    console.log(`  npm install`);
-    console.log(`  npm run dev\n`);
+    console.log(bold(green(`\n✔ Success! Project created in ${projectName}\n`)));
+
+    console.log('Next steps:');
+    console.log(`  1. cd ${projectName}`);
+    console.log(`  2. npm install`);
+
+    if (backend === 'chat-workers') {
+        console.log(`  3. npx wrangler login  (if not logged in)`);
+        console.log(`  4. npm run deploy`);
+    } else {
+        console.log(`  3. cp .env.example .env`);
+        console.log(`  4. npm run dev`);
+    }
+
+    console.log(`\nSee ${bold('README.md')} inside the folder for configuration details.\n`);
 }
 
 function copy(src, dest) {
