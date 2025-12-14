@@ -1,0 +1,11 @@
+name = "chat-workers"
+main = "src/index.js"
+compatibility_date = "2025-12-14"
+
+[ai]
+binding = "AI"
+
+[vars]
+# API_KEY = "your-secret-key"
+# FRONTEND_URL = "http://localhost:3000"
+# AI_MODEL = "@cf/meta/llama-3-8b-instruct"
