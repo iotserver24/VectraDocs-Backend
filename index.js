@@ -26,14 +26,14 @@ async function init() {
                     message: 'Select your backend infrastructure:',
                     choices: [
                         {
-                            title: 'Cloudflare Workers (Recommended)',
-                            description: 'Serverless, runs at the Edge, uses Helpers AI.',
-                            value: 'chat-workers'
-                        },
-                        {
-                            title: 'Node.js (Express)',
+                            title: 'Node.js (Express) (Recommended)',
                             description: 'Standard server. Runs on Vercel/VPS. Uses OpenAI SDK.',
                             value: 'chat-backend'
+                        },
+                        {
+                            title: 'Cloudflare Workers',
+                            description: 'Serverless, runs at the Edge, uses Helpers AI.',
+                            value: 'chat-workers'
                         },
                     ],
                 },
@@ -57,6 +57,36 @@ async function init() {
 
     const { backend, projectName } = result;
 
+    // Additional configuration prompts
+    let config;
+    try {
+        config = await prompts([
+            {
+                type: 'text',
+                name: 'frontendUrl',
+                message: 'Frontend URL (for CORS):',
+                initial: 'http://localhost:5173',
+            },
+            {
+                type: 'toggle',
+                name: 'generateKey',
+                message: 'Generate a secure API Key?',
+                initial: true,
+                active: 'yes',
+                inactive: 'no',
+            }
+        ], {
+            onCancel: () => { throw new Error(red('✖') + ' Operation cancelled'); }
+        });
+    } catch (cancelled) {
+        console.log(cancelled.message);
+        return;
+    }
+
+    const apiKey = config.generateKey
+        ? Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+        : 'your-secret-api-key';
+
     const root = path.join(cwd, projectName);
     const templateDir = path.resolve(
         fileURLToPath(import.meta.url),
@@ -74,6 +104,33 @@ async function init() {
     fs.mkdirSync(root, { recursive: true });
     copy(templateDir, root);
 
+    // --- Configuration Injection ---
+    console.log('Configuring environment...');
+
+    if (backend === 'chat-workers') {
+        // Update wrangler.toml
+        const wranglerPath = path.join(root, 'wrangler.toml');
+        let wranglerContent = fs.readFileSync(wranglerPath, 'utf-8');
+
+        wranglerContent = wranglerContent
+            .replace('# API_KEY = "your-secret-key"', `API_KEY = "${apiKey}"`)
+            .replace('# FRONTEND_URL = "http://localhost:3000"', `FRONTEND_URL = "${config.frontendUrl}"`);
+
+        fs.writeFileSync(wranglerPath, wranglerContent);
+
+    } else if (backend === 'chat-backend') {
+        // Setup .env
+        const envExample = path.join(root, '.env.example');
+        const envDest = path.join(root, '.env');
+
+        let envContent = fs.readFileSync(envExample, 'utf-8');
+        envContent = envContent
+            .replace('FRONTEND_URL=http://localhost:5173', `FRONTEND_URL=${config.frontendUrl}`)
+            .replace('API_KEY=your-secret-api-key', `API_KEY=${apiKey}`);
+
+        fs.writeFileSync(envDest, envContent);
+    }
+
     console.log(bold(green(`\n✔ Success! Project created in ${projectName}\n`)));
 
     console.log('Next steps:');
@@ -84,11 +141,12 @@ async function init() {
         console.log(`  3. npx wrangler login  (if not logged in)`);
         console.log(`  4. npm run deploy`);
     } else {
-        console.log(`  3. cp .env.example .env`);
+        console.log(`  3. Open .env and add your LLM_API_KEY`);
         console.log(`  4. npm run dev`);
     }
 
-    console.log(`\nSee ${bold('README.md')} inside the folder for configuration details.\n`);
+    console.log(`\nYour API Key is: ${bold(apiKey)} (Saved in config)\n`);
+    console.log(`See ${bold('README.md')} inside the folder for more details.\n`);
 }
 
 function copy(src, dest) {
